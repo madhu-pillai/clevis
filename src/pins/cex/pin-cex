@@ -22,7 +22,7 @@ set -e
 TMP="$(mktemp -d)"
 # shellcheck disable=SC2064 # Expanding TMP right now is intended
 trap "rm -rf \"$TMP\"" EXIT
-
+cp /etc/zkey/repository/secure_xtskey1.skey 
 cfg="$(printf '{"keyfile":"%s"}' "$TMP/key")"
 inp='hi'
 enc="$(printf '%s' "$inp" | clevis encrypt cex "$cfg")"

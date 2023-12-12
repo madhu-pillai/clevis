@@ -1,16 +1,8 @@
-
-#%# Creating an decrypting pin
-#%#
-#%# Read README.md and clevis-encrypt-cex first, this file aims to
-#%# to avoid information duplication.
-#%# Unfortunately, this one uses a bashism (read -d) that is not at
-#%# all easy to eliminate.
-#!/bin/bash
-
-set -eu
-
-# Copyright (c) @year@ @name@
-# Author: @name@ <@email@>
+#!/bin/bash -e
+# vim: set tabstop=8 shiftwidth=4 softtabstop=4 expandtab smarttab colorcolumn=80:
+#
+# Copyright (c) 2023 Madhu Pillai.
+# Author: madhupillai80@gmail.com <madhu.pillai1@ibm.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,11 +15,18 @@ set -eu
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#%# This program takes no options - everything needed to know will be
-#%# read from stdin.
+
+function on_exit() {
+    if [ ! -d "$TMP" ] || ! rm -rf "$TMP"; then
+        echo "Delete temporary files failed!" >&2
+        echo "You need to clean up: $TMP" >&2
+        exit 1
+    fi
+}
+
 [ $# -eq 1 ] && [ "${1:-}" = "--summary" ] && exit 2
 
 if [ -t 0 ] ; then
@@ -37,24 +36,46 @@ if [ -t 0 ] ; then
     exit 1
 fi
 
-#%# The input is concatenated using the dot. Read the first element
-#%# but leave everything else in the buffer. Only read -d can to that.
-read -d . hdr64
-#%# The header is base64-encoded. Decode now and also verify this is valid JSON
-if ! hdr="$(jose fmt --quote="$hdr64" --string --b64load --object --output=-)" ; then
-    echo 'JWE header corrupt' >&2
+#Verify the paes-s390 kernel module
+if ! lsmod | grep -q paes; then
+    modprobe paes 
+fi
+
+#Show Information about zcrypt devices and configuration.
+if ! command -v lszcrypt > /dev/null ; then
+    printf "s390x-tools not found"
+    exit 1
+fi
+
+#Verify the CEX card    
+if ! command lszcrypt -V > /dev/null; then
+    printf "Cex Card not found"
+    exit 1
+fi
+
+#Verify the CEX CARD present and atleast has a domain.
+card_domain=$(lszcrypt --ccaonly | awk '$1 ~ /^[0-9A-Fa-f]{2}\.[0-9A-Fa-f]{4}$/ {print $1}')
+if [ -z $card_domain ]; then
+    printf "No Crypto domain present"
+    exit 1
+    fi
+
+read -r -d . hdr64
+
+if ! hdr="$(jose b64 dec -i- <<< $hdr64 )"; then
+    echo "Error decoding JWE protected header!" >&2
     exit 1
 fi
 
 #%# Input validation: The pin must exist by name.
-if [ "$(jose fmt --json="$hdr" --get clevis --get pin --unquote=-)" != 'cex' ] ; then
-    echo 'JWE pin mismatch!' >&2
+if [ "$(jose fmt -j- -Og clevis -g pin -u- <<< "$hdr")" != "cex" ]; then
+    echo "JWE pin mismatch!" >&2
     exit 1
 fi
 
 #%# Load the parameters into shell variables.
-if ! keyfile="$(jose fmt --json="$hdr" --get clevis --get cex --get keyfile --unquote=-)" ; then
-    echo 'JWE missing 'clevis.cex.@param1@' header parameter!' >&2
+if ! keyfile="$(jose fmt --json="$hdr" --get clevis --get cex --get key --unquote=-)" ; then
+    echo 'JWE missing 'clevis.cex.key' header parameter!' >&2
     exit 1
 fi
 
@@ -62,6 +83,28 @@ if [ ! -f "$keyfile" ] ; then
     echo "Key file $keyfile not found" >&2
     exit 1
 fi
+
+
+mkdir -p "${TMPDIR:-/tmp}"
+if ! TMP="$(mktemp -d)"; then
+    echo "Creating a temporary dir for TPM files failed!" >&2
+    exit 1
+fi
+
+#Change the default zkey repository to tmp directory
+export ZKEY_REPOSITORY="/tmp/zkey"
+
+if ! jose b64 dec -i- -O "$TMP"/secure.skey <<< "$keyfile"; then
+    echo "Decoding secure key from Base64 failed!" >&2
+    exit 1
+fi
+
+if ! zkey val "$TMP"/secure.skey; then
+    echo "Secure Key validation failed!" >&2
+    exit 1
+fi
+
+jwk="$(jose b64 dec -i- <<< "$keyfile")"
 #if ! @param2@="$(jose fmt --json="$hdr" --get clevis --get cex --get @param2@ --unquote=-)" ; then
 #    echo 'JWE missing 'clevis.cex.@param2@' header parameter!' >&2
 #    exit 1
