@@ -105,17 +105,6 @@ if ! zkey val "$TMP"/secure.skey; then
 fi
 
 jwk="$(jose b64 dec -i- <<< "$keyfile")"
-#if ! @param2@="$(jose fmt --json="$hdr" --get clevis --get cex --get @param2@ --unquote=-)" ; then
-#    echo 'JWE missing 'clevis.cex.@param2@' header parameter!' >&2
-#    exit 1
-#fi
-
-#%# Possibly some pre-checks on your parameters are needed.
-
-#%# Now everything is set up for your pin's business logic
-#%#
-#%# Your job: Somehow bring the key into `jwk`.
-jwk="$(cat "$keyfile")"
 
 
 if ! jose fmt --json="$jwk" --object --output=/dev/null 2>/dev/null ; then
