@@ -5,41 +5,32 @@ CLEVIS-ENCRYPT-CEX(1)
 
 == NAME
 
-clevis-encrypt-cex - Encrypts using a IBM CCA Cryto Express Card policy
+clevis-encrypt-cex - Encrypts using a jwk key 
 
 == SYNOPSIS
 
-*clevis encrypt cex* CONFIG < PT > JWE
+*clevis encrypt cex*  < PT > JWE
 
 == OVERVIEW
 
-The *clevis encrypt cex* command encrypts using a IBM CCA Crypto Express Card policy.
+The *clevis encrypt cex* command encrypts using a jwk key.
 Its only argument is the JSON configuration object.
 
 
 
 Encrypting data using the cex pin works like this:
 
-    $ clevis encrypt cex '{"keyfile":"/path/to/securekey"}' < PT > JWE
+    $ clevis encrypt cex < PT > JWE
 
 To decrypt the data, just pass it to the *clevis decrypt* command:
 
     $ clevis decrypt < JWE > PT
 
-== CONFIG
 
-This command uses the following configuration properties:
 
-#%# Keep this in sync with the short help in clevis-encrypt-@pin@
+This command uses the NO CONFIG  properties:
 
-* *keyfile* (string) :
-   (REQUIRED)
 
-* *@mand2@* (string) :
-  @@ (REQUIRED)
-
-* *@opt1@* (string) :
-  @@ (default: @@)
 
 == BUGS
 

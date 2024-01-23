@@ -85,30 +85,30 @@ if [ ! -f "$keyfile" ] ; then
 fi
 
 
-mkdir -p "${TMPDIR:-/tmp}"
-if ! TMP="$(mktemp -d)"; then
-    echo "Creating a temporary dir for TPM files failed!" >&2
-    exit 1
-fi
+# mkdir -p "${TMPDIR:-/tmp}"
+# if ! TMP="$(mktemp -d)"; then
+#     echo "Creating a temporary dir for TPM files failed!" >&2
+#     exit 1
+# fi
 
-#Change the default zkey repository to tmp directory
-export ZKEY_REPOSITORY="/tmp/zkey"
+# #Change the default zkey repository to tmp directory
+# export ZKEY_REPOSITORY="/tmp/zkey"
 
-if ! jose b64 dec -i- -O "$TMP"/secure.skey <<< "$keyfile"; then
-    echo "Decoding secure key from Base64 failed!" >&2
-    exit 1
-fi
+# if ! jose b64 dec -i- -O "$TMP"/secure.skey <<< "$keyfile"; then
+#     echo "Decoding secure key from Base64 failed!" >&2
+#     exit 1
+# fi
 
-if ! zkey val "$TMP"/secure.skey; then
-    echo "Secure Key validation failed!" >&2
-    exit 1
-fi
+# if ! zkey val "$TMP"/secure.skey; then
+#     echo "Secure Key validation failed!" >&2
+#     exit 1
+# fi
 
-jwk="$(jose b64 dec -i- <<< "$keyfile")"
+jwk="$(jose fmt --json="$hdr" --get clevis --get cex --get key --unquote=-)"
 
 
 if ! jose fmt --json="$jwk" --object --output=/dev/null 2>/dev/null ; then
-    echo "Key file $keyfile is malformed" >&2
+    echo "JWK Key file $key is malformed" >&2
     exit 1
 fi
 

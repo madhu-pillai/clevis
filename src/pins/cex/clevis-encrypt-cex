@@ -47,15 +47,15 @@ if [ -t 0 ] ; then
     echo
     echo "This command uses the following configuration properties:"
     echo
-    echo "  keybits: <string>   Specifies the size of the AES key to be generated in bits.  Valid values are 128, 192, and 256 (default: 256)"
-    echo 
-    echo "  key-type: <string>   Specifies  the  key  type of the secure key. Possible values are CCA-AESDATA, CCA-AESCIPHER (default: CCA-AESDATA)"
-    echo
-    echo "  volume-type: <string>    Specifies  the  volume  type of the associated volumes used with dm-crypt. Possible values are plain and luks2 (default: luks2)"
-    echo 
-    echo "  sector-size: <string>    Specifies the sector size in bytes used with dm-crypt. It must be a power of two and in the range of 512 to 4096 bytes (default: 512)"
-    echo
-    echo "  cipher-mode: <string>   Generates a secure AES key for the XTS cipher mode that consist of two concatenated secure keys (default: xts)"
+    # echo "  keybits: <string>   Specifies the size of the AES key to be generated in bits.  Valid values are 128, 192, and 256 (default: 256)"
+    # echo 
+    # echo "  key-type: <string>   Specifies  the  key  type of the secure key. Possible values are CCA-AESDATA, CCA-AESCIPHER (default: CCA-AESDATA)"
+    # echo
+    # echo "  volume-type: <string>    Specifies  the  volume  type of the associated volumes used with dm-crypt. Possible values are plain and luks2 (default: luks2)"
+    # echo 
+    # echo "  sector-size: <string>    Specifies the sector size in bytes used with dm-crypt. It must be a power of two and in the range of 512 to 4096 bytes (default: 512)"
+    # echo
+    # echo "  cipher-mode: <string>   Generates a secure AES key for the XTS cipher mode that consist of two concatenated secure keys (default: xts)"
     echo
     exit 2
 
@@ -89,40 +89,40 @@ if ! cfg="$(jose fmt --json="${1}" --object --output=- 2>/dev/null)" ; then
     exit 1
 fi
 
-keybits="$(jose fmt -j- -Og keybits -u- <<< "$cfg")" || keybits="256"
+# keybits="$(jose fmt -j- -Og keybits -u- <<< "$cfg")" || keybits="256"
 
-key-type="$(jose fmt -j- -Og key-type -u- <<< "$cfg")" || key-type="CCA-AESDATA"
+# key-type="$(jose fmt -j- -Og key-type -u- <<< "$cfg")" || key-type="CCA-AESDATA"
 
-volume-type="$(jose fmt -j- -Og volume-type -u- <<< "$cfg")" || volume-type="luks2"
+# volume-type="$(jose fmt -j- -Og volume-type -u- <<< "$cfg")" || volume-type="luks2"
 
-sector-size="$(jose fmt -j- -Og sector-size -u- <<< "$cfg")" || sector-size="512"
+# sector-size="$(jose fmt -j- -Og sector-size -u- <<< "$cfg")" || sector-size="512"
 
-cipher-mode="$(jose fmt -j- -Og cipher-mode -u- <<< "$cfg")" || cipher-mode="xts"
+# cipher-mode="$(jose fmt -j- -Og cipher-mode -u- <<< "$cfg")" || cipher-mode="xts"
 
 
-mkdir -p "${TMPDIR:-/tmp/zkey}"
-if ! TMP="$(mktemp -d)"; then
-    echo "Creating a temporary dir for TPM files failed!" >&2
-    exit 1
-fi
+# mkdir -p "${TMPDIR:-/tmp/zkey}"
+# if ! TMP="$(mktemp -d)"; then
+#     echo "Creating a temporary dir for CEX files failed!" >&2
+#     exit 1
+# fi
 
-trap 'on_exit' EXIT
+# trap 'on_exit' EXIT
 
-#Change the default zkey repository to tmp directory
-export ZKEY_REPOSITORY="/tmp/zkey"
+# #Change the default zkey repository to tmp directory
+# export ZKEY_REPOSITORY="/tmp/zkey"
 
-#Generate the secure key.
-zkey generate --name secure_key --keybits "${keybits}" --key-type "${key-type}" --"${cipher-mode}" --volume-type "${volume-type}" --sector-size "${sector-size}" --apqns "${card_domain}"  >&2 || fail=$?
+# #Generate the secure key.
+# zkey generate --name secure_key --keybits "${keybits}" --key-type "${key-type}" --"${cipher-mode}" --volume-type "${volume-type}" --sector-size "${sector-size}" --apqns "${card_domain}"  >&2 || fail=$?
 
-if [ -n $fail ]; then
-    echo "Creating Secure Key failed!" >&2
-    exit 1
-    fi
+# if [ -n $fail ]; then
+#     echo "Creating Secure Key failed!" >&2
+#     exit 1
+#     fi
 
-if ! skey="$(jose b64 enc -I $TMPDIR/secure_key.skey)" ; then
-    echo 'Missing the required keyfile property!' >&2
-    exit 1
-fi
+# if ! skey="$(jose b64 enc -I $TMPDIR/secure_key.skey)" ; then
+#     echo 'Missing the required keyfile property!' >&2
+#     exit 1
+# fi
 
 if ! jwk="$(jose jwk gen -i '{"alg":"A256GCM"}')"; then
     echo "Generating a jwk failed!" >&2
@@ -130,7 +130,8 @@ if ! jwk="$(jose jwk gen -i '{"alg":"A256GCM"}')"; then
 fi
 
 jwe='{"protected":{"clevis":{"pin":"cex","cex":{}}}}'
-jwe="$(jose fmt -j "$jwe" -g protected -g clevis -g cex -q "$skey" -s key -UUUUo-)"
+jwe="$(jose fmt -j "$jwe" -g protected -g clevis -g cex -q "$jwk" -s key -UUUUo-)"
+#jwe="$(jose fmt -j "$jwe" -g protected -g clevis -g cex -q "$skey" -s skey -UUUUo-)"
 
 # The on_exit() trap will not be fired after exec, so let's clean up the temp
 # directory at this point.
